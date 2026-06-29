@@ -1,60 +1,114 @@
-import Fastify from 'fastify';
-import cors from '@fastify/cors';
-import { BudeEngine } from '../core/engine.js';
-import { MemoryStore } from '../storage/db.js';
+import http from 'http';
+import { BudeMemory } from '../sdk/index.js';
 import { Message } from '../core/types.js';
 
-const app = Fastify({ logger: true });
-await app.register(cors, { origin: '*' });
+const PORT = process.env.PORT || 3000;
+const memory = new BudeMemory();
 
-const dbUrl = process.env.DATABASE_URL || 'postgresql://localhost:5432/budememory';
-const store = new MemoryStore(dbUrl);
-await store.init();
+const server = http.createServer(async (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
 
-const engine = new BudeEngine(store);
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-app.get('/health', async () => ({ status: 'ok', version: '0.1.0' }));
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
 
-app.post('/store', async (request, reply) => {
-  const body = request.body as any;
-  const msg: Message = {
-    id: body.id || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    userId: body.userId,
-    sessionId: body.sessionId || 'default',
-    role: body.role || 'user',
-    content: body.content,
-    timestamp: new Date(body.timestamp || Date.now()),
-    metadata: body.metadata || {},
-  };
+  const url = new URL(req.url || '/', `http://${req.headers.host}`);
+  const path = url.pathname;
 
-  await engine.storeMessage(msg);
-  return { success: true, id: msg.id };
+  try {
+    if (path === '/health' && req.method === 'GET') {
+      res.writeHead(200);
+      res.end(JSON.stringify({ status: 'ok', service: 'bude-memory' }));
+      return;
+    }
+
+    if (path === '/store' && req.method === 'POST') {
+      const body = await readBody(req);
+      const msg: Message = {
+        id: body.id || crypto.randomUUID(),
+        userId: body.userId,
+        sessionId: body.sessionId,
+        role: body.role,
+        content: body.content,
+        timestamp: new Date(body.timestamp || Date.now()),
+        metadata: body.metadata || {},
+      };
+      await memory.store(msg);
+      res.writeHead(201);
+      res.end(JSON.stringify({ success: true, id: msg.id }));
+      return;
+    }
+
+    if (path === '/retrieve' && req.method === 'POST') {
+      const body = await readBody(req);
+      const context = await memory.retrieve({
+        userId: body.userId,
+        sessionId: body.sessionId,
+        currentGoal: body.currentGoal,
+        maxTokens: body.maxTokens || 1000,
+        includeProfile: body.includeProfile !== false,
+      });
+      res.writeHead(200);
+      res.end(JSON.stringify(context));
+      return;
+    }
+
+    if (path === '/profile' && req.method === 'GET') {
+      const userId = url.searchParams.get('userId');
+      if (!userId) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Missing userId' }));
+        return;
+      }
+      const profile = await memory.getProfile(userId);
+      res.writeHead(200);
+      res.end(JSON.stringify(profile || { userId, facts: [], preferences: {}, relationships: [], summary: '' }));
+      return;
+    }
+
+    res.writeHead(404);
+    res.end(JSON.stringify({ error: 'Not found' }));
+  } catch (err) {
+    console.error('API Error:', err);
+    res.writeHead(500);
+    res.end(JSON.stringify({ error: 'Internal server error', message: (err as Error).message }));
+  }
 });
 
-app.post('/retrieve', async (request, reply) => {
-  const body = request.body as any;
-  const context = await engine.retrieve({
-    userId: body.userId,
-    currentGoal: body.currentGoal,
-    maxTokens: body.maxTokens || 500,
-    sessionId: body.sessionId,
-    includeProfile: body.includeProfile !== false,
+function readBody(req: http.IncomingMessage): Promise<any> {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', chunk => data += chunk);
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(data || '{}'));
+      } catch {
+        resolve({});
+      }
+    });
+    req.on('error', reject);
   });
-  return context;
+}
+
+server.listen(PORT, () => {
+  console.log(`🧠 Bude Memory API running on http://localhost:${PORT}`);
+  console.log(`Endpoints:`);
+  console.log(`  GET  /health          - Health check`);
+  console.log(`  POST /store           - Store a message`);
+  console.log(`  POST /retrieve        - Retrieve context`);
+  console.log(`  GET  /profile?userId  - Get user profile`);
 });
 
-app.get('/profile/:userId', async (request, reply) => {
-  const { userId } = request.params as any;
-  const profile = await engine.getProfile(userId);
-  if (!profile) return reply.status(404).send({ error: 'Profile not found' });
-  return profile;
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('Shutting down...');
+  await memory.close();
+  server.close(() => process.exit(0));
 });
-
-app.get('/sessions/:userId', async (request, reply) => {
-  const { userId } = request.params as any;
-  return engine.getSessions(userId);
-});
-
-const port = parseInt(process.env.PORT || '3000');
-await app.listen({ port, host: '0.0.0.0' });
-console.log(`Bude Memory API running on http://localhost:${port}`);
