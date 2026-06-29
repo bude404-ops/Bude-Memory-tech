@@ -1,67 +1,50 @@
 import { MemoryTier, UserProfile, RetrieveOptions, RetrievedContext } from './types.js';
 
 /**
- * Retrieve the smallest relevant memory set for the current goal.
- * Ranks by relevance, not recency or similarity alone.
+ * Retrieves the smallest relevant context set based on options.
  */
 export class MemoryRetriever {
   retrieve(
     working: MemoryTier[],
     episodic: MemoryTier[],
-    semantic: UserProfile | null,
+    profile: UserProfile | null,
     options: RetrieveOptions
   ): RetrievedContext {
-    const { currentGoal, maxTokens = 500, includeProfile = true } = options;
+    const maxTokens = options.maxTokens || 1000;
+    const includeProfile = options.includeProfile !== false;
 
-    // Score episodic memories against current goal
-    const scoredEpisodic = episodic.map((e) => ({
-      ...e,
-      relevance: this.scoreRelevance(e.content, currentGoal || ''),
-    }));
+    // Simple token estimation: ~4 chars per token
+    const estimateTokens = (text: string) => Math.ceil(text.length / 4);
 
-    // Sort by relevance * importance
-    scoredEpisodic.sort(
-      (a, b) => b.relevance * b.importance - a.relevance * a.importance
-    );
-
-    // Budget tokens across tiers
-    const workingTokens = this.estimateTokens(working);
-    const profileTokens = includeProfile && semantic ? this.estimateProfileTokens(semantic) : 0;
-    const remainingBudget = Math.max(0, maxTokens - workingTokens - profileTokens);
-
+    let totalTokens = 0;
+    const selectedWorking: MemoryTier[] = [];
     const selectedEpisodic: MemoryTier[] = [];
-    let usedTokens = 0;
-    for (const mem of scoredEpisodic) {
-      const t = this.estimateTokens([mem]);
-      if (usedTokens + t > remainingBudget) break;
-      selectedEpisodic.push(mem);
-      usedTokens += t;
+
+    // Always include working memory (most recent)
+    for (const tier of working) {
+      const tokens = estimateTokens(tier.content);
+      if (totalTokens + tokens > maxTokens) break;
+      selectedWorking.push(tier);
+      totalTokens += tokens;
     }
 
-    const totalTokens = workingTokens + usedTokens + profileTokens;
+    // Add episodic if space permits, sorted by importance
+    const sortedEpisodic = [...episodic].sort((a, b) => b.importance - a.importance);
+    for (const tier of sortedEpisodic) {
+      const tokens = estimateTokens(tier.content);
+      if (totalTokens + tokens > maxTokens) break;
+      // Deduplicate
+      if (!selectedEpisodic.some((e) => e.content === tier.content)) {
+        selectedEpisodic.push(tier);
+        totalTokens += tokens;
+      }
+    }
 
     return {
-      working,
+      working: selectedWorking,
       episodic: selectedEpisodic,
-      semantic: includeProfile ? semantic : null,
+      semantic: includeProfile ? profile : null,
       estimatedTokens: totalTokens,
     };
-  }
-
-  private scoreRelevance(content: string, goal: string): number {
-    if (!goal) return 0.5;
-    const cWords = new Set(content.toLowerCase().split(/\s+/));
-    const gWords = new Set(goal.toLowerCase().split(/\s+/));
-    const overlap = [...cWords].filter((w) => gWords.has(w)).length;
-    return Math.min(1, overlap / Math.max(1, gWords.size));
-  }
-
-  private estimateTokens(tiers: MemoryTier[]): number {
-    return tiers.reduce((sum, t) => sum + Math.ceil(t.content.length / 4), 0);
-  }
-
-  private estimateProfileTokens(profile: UserProfile): number {
-    const text = `${profile.summary} ${Object.values(profile.preferences).join(' ')}`;
-    return Math.ceil(text.length / 4);
   }
 }
