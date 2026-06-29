@@ -1,68 +1,59 @@
+import { BudeEngine } from '../core/engine.js';
+import { MemoryStore } from '../storage/db.js';
+import { Message, RetrieveOptions, UserProfile } from '../core/types.js';
+
 export interface BudeMemoryConfig {
-  apiKey?: string;
   baseUrl?: string;
-}
-
-export interface StoreInput {
-  userId: string;
-  sessionId?: string;
-  role?: 'user' | 'assistant' | 'system';
-  content: string;
-  metadata?: Record<string, unknown>;
-}
-
-export interface RetrieveInput {
-  userId: string;
-  currentGoal?: string;
-  maxTokens?: number;
-  sessionId?: string;
-  includeProfile?: boolean;
+  databaseUrl?: string;
 }
 
 /**
- * JavaScript/TypeScript SDK for Bude Memory.
+ * High-level SDK wrapper for Bude Memory.
  */
 export class BudeMemory {
-  private baseUrl: string;
-  private apiKey?: string;
+  private engine: BudeEngine;
+  private store: MemoryStore;
+  private initialized: boolean = false;
 
   constructor(config: BudeMemoryConfig = {}) {
-    this.baseUrl = config.baseUrl || 'http://localhost:3000';
-    this.apiKey = config.apiKey;
+    const dbUrl = config.databaseUrl || process.env.DATABASE_URL || 'postgresql://localhost:5432/budememory';
+    this.store = new MemoryStore(dbUrl);
+    this.engine = new BudeEngine(this.store);
   }
 
-  private async fetch(path: string, body?: unknown): Promise<any> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    if (this.apiKey) headers['Authorization'] = `Bearer ${this.apiKey}`;
-
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      method: body ? 'POST' : 'GET',
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`BudeMemory error ${res.status}: ${err}`);
+  async init(): Promise<void> {
+    if (!this.initialized) {
+      await this.store.init();
+      this.initialized = true;
     }
-    return res.json();
   }
 
-  async store(input: StoreInput): Promise<{ success: boolean; id: string }> {
-    return this.fetch('/store', input);
+  async store(msg: Omit<Message, 'timestamp'> & { timestamp?: Date }): Promise<void> {
+    await this.init();
+    const fullMsg: Message = {
+      ...msg,
+      timestamp: msg.timestamp || new Date(),
+    };
+    await this.engine.storeMessage(fullMsg);
   }
 
-  async retrieve(input: RetrieveInput): Promise<any> {
-    return this.fetch('/retrieve', input);
+  async retrieve(options: RetrieveOptions) {
+    await this.init();
+    return this.engine.retrieve(options);
   }
 
-  async getProfile(userId: string): Promise<any> {
-    return this.fetch(`/profile/${encodeURIComponent(userId)}`);
+  async getProfile(userId: string): Promise<UserProfile | null> {
+    await this.init();
+    return this.engine.getProfile(userId);
   }
 
-  async getSessions(userId: string): Promise<any> {
-    return this.fetch(`/sessions/${encodeURIComponent(userId)}`);
+  async getSessions(userId: string) {
+    await this.init();
+    return this.engine.getSessions(userId);
+  }
+
+  async close(): Promise<void> {
+    await this.store.close();
+    this.initialized = false;
   }
 }
