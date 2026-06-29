@@ -1,7 +1,7 @@
-import { BudeMemory } from 'bude-memory';
+import { BudeMemory } from '../dist/index.js';
 
 const memory = new BudeMemory({
-  baseUrl: 'http://localhost:3000',
+  databaseUrl: process.env.DATABASE_URL || 'postgresql://localhost:5432/budememory',
 });
 
 async function demo() {
@@ -46,6 +46,8 @@ async function demo() {
   const profile = await memory.getProfile(userId);
   console.log('\n=== FULL PROFILE ===');
   console.log(JSON.stringify(profile, null, 2));
+
+  await memory.close();
 }
 
 demo().catch(console.error);
