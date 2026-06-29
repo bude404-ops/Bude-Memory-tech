@@ -1,66 +1,76 @@
-import { Message, ExtractedEntity } from './types.js';
+import { ExtractedEntity } from './types.js';
 
 /**
- * Extract structured entities from raw messages.
- * In production, this uses a small LLM. Here: rule-based MVP.
+ * Simple rule-based entity extractor.
+ * In production, swap this for an LLM-based extractor.
  */
 export class EntityExtractor {
-  extract(message: Message): ExtractedEntity[] {
+  extract(msg: { content: string; role: string }): ExtractedEntity[] {
     const entities: ExtractedEntity[] = [];
-    const text = message.content.toLowerCase();
+    const text = msg.content;
 
-    // Preference patterns
+    // Extract preferences (hate/love/prefer)
     const prefPatterns = [
-      /i (?:like|love|prefer|enjoy|hate|dislike|can't stand) (.+?)(?:\.|,|$)/gi,
-      /my favorite (.+?) is (.+?)(?:\.|,|$)/gi,
-      /i always (.+?)(?:\.|,|$)/gi,
-      /i never (.+?)(?:\.|,|$)/gi,
+      { regex: /I (?:hate|dislike|can't stand|don't like)\s+([^,.]+)/gi, type: 'preference' as const, valence: 'negative' },
+      { regex: /I (?:love|like|prefer|enjoy|want)\s+([^,.]+)/gi, type: 'preference' as const, valence: 'positive' },
+      { regex: /I am (?:allergic to|intolerant to)\s+([^,.]+)/gi, type: 'preference' as const, valence: 'negative' },
     ];
 
-    for (const pattern of prefPatterns) {
+    for (const p of prefPatterns) {
       let match;
-      while ((match = pattern.exec(text)) !== null) {
+      while ((match = p.regex.exec(text)) !== null) {
         entities.push({
-          type: 'preference',
-          value: match[0].trim(),
-          confidence: 0.7,
-        });
-      }
-    }
-
-    // Fact patterns
-    const factPatterns = [
-      /i am (?:a|an) (.+?)(?:\.|,|$)/gi,
-      /i work (?:at|for|as) (.+?)(?:\.|,|$)/gi,
-      /i live in (.+?)(?:\.|,|$)/gi,
-      /my (?:name|email|phone) is (.+?)(?:\.|,|$)/gi,
-    ];
-
-    for (const pattern of factPatterns) {
-      let match;
-      while ((match = pattern.exec(text)) !== null) {
-        entities.push({
-          type: 'fact',
-          value: match[0].trim(),
+          type: p.type,
+          value: `${p.valence}: ${match[1].trim()}`,
           confidence: 0.8,
         });
       }
     }
 
-    // Event patterns
-    const eventPatterns = [
-      /i (?:booked|bought|ordered|scheduled|planned) (.+?)(?:\.|,|$)/gi,
-      /i (?:visited|went to|attended) (.+?)(?:\.|,|$)/gi,
-      /i (?:finished|completed|started) (.+?)(?:\.|,|$)/gi,
+    // Extract facts (name, location, job)
+    const factPatterns = [
+      { regex: /my name is (\w+)/gi, label: 'name' },
+      { regex: /I am (?:a|an) ([^,.]+)/gi, label: 'occupation' },
+      { regex: /I work (?:as|at|for) ([^,.]+)/gi, label: 'work' },
+      { regex: /I live in ([^,.]+)/gi, label: 'location' },
     ];
 
-    for (const pattern of eventPatterns) {
+    for (const p of factPatterns) {
       let match;
-      while ((match = pattern.exec(text)) !== null) {
+      while ((match = p.regex.exec(text)) !== null) {
+        entities.push({
+          type: 'fact',
+          value: `${p.label}: ${match[1].trim()}`,
+          confidence: 0.85,
+        });
+      }
+    }
+
+    // Extract relationships
+    const relPattern = /my (\w+) (?:is|works as|lives in)\s+([^,.]+)/gi;
+    let relMatch;
+    while ((relMatch = relPattern.exec(text)) !== null) {
+      entities.push({
+        type: 'relationship',
+        value: `${relMatch[1]} → ${relMatch[2].trim()}`,
+        confidence: 0.75,
+      });
+    }
+
+    // Extract events (booking, scheduling)
+    const eventPatterns = [
+      { regex: /book(?:ing|ed)?\s+(?:a|an)?\s*([^,.]+)/gi, label: 'booking' },
+      { regex: /schedule(?:d|ing)?\s+(?:a|an)?\s*([^,.]+)/gi, label: 'scheduling' },
+      { regex: /travel(?:ing|ling)?\s+(?:to)?\s*([^,.]+)/gi, label: 'travel' },
+    ];
+
+    for (const p of eventPatterns) {
+      let match;
+      while ((match = p.regex.exec(text)) !== null) {
         entities.push({
           type: 'event',
-          value: match[0].trim(),
-          confidence: 0.75,
+          value: `${p.label}: ${match[1].trim()}`,
+          confidence: 0.7,
         });
       }
     }
