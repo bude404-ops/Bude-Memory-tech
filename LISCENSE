@@ -1,21 +1,88 @@
-MIT License
 
-Copyright (c) 2026 Bude Tech
+---
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+### **NEW: `SPONSORS.md`**
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+```markdown
+# 💎 Sponsor Bude Memory
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Bude Memory is an open-source project built to solve a real problem: AI agents burning through tokens and context windows because they have no smart memory layer.
+
+If Bude Memory saves you money, speeds up your agents, or helps you ship faster, consider sponsoring its continued development.
+
+---
+
+## Why Sponsor?
+
+Your sponsorship directly funds:
+
+- **New features** — LLM-powered extraction, vector search, multi-agent memory sharing
+- **Better docs & examples** — More languages, frameworks, and use cases
+- **Bug fixes & maintenance** — Keeping the core stable and fast
+- **Community support** — Answering issues, reviewing PRs, helping devs
+
+---
+
+## Sponsor Tiers
+
+### ☕ Coffee Supporter — $5/mo
+- Your name in the README sponsors section
+- Access to the private Discord channel
+- My eternal gratitude
+
+### 🚀 Early Adopter — $25/mo
+- Everything above
+- Priority issue responses (48h SLA)
+- Early access to new releases
+- Listed on the website as a supporter
+
+### 💼 Startup Backer — $100/mo
+- Everything above
+- 1:1 architecture call per quarter
+- Logo on the website + README
+- Input on the public roadmap
+
+### 🏢 Enterprise Patron — $500/mo
+- Everything above
+- Dedicated Slack channel
+- Custom feature development (1 per quarter)
+- Co-marketing opportunities
+- Annual strategy review call
+
+---
+
+## One-Time Tips
+
+Not ready for a subscription? [Buy me a coffee](https://buymeacoffee.com/bude404) or send a one-time tip via:
+
+- **GitHub Sponsors** — [github.com/sponsors/bude404-ops](https://github.com/sponsors/bude404-ops)
+- **Ko-fi** — [ko-fi.com/bude404](https://ko-fi.com/bude404)
+
+---
+
+## What Sponsors Get That Others Don't
+
+| Feature | Free | Sponsor |
+|---------|------|---------|
+| Core library | ✅ | ✅ |
+| Community support | ✅ | ✅ |
+| Priority bug fixes | ❌ | ✅ |
+| Private roadmap access | ❌ | ✅ |
+| 1:1 calls | ❌ | ✅ |
+| Custom features | ❌ | ✅ |
+
+---
+
+## Current Sponsors
+
+*No sponsors yet — be the first!*
+
+---
+
+## Questions?
+
+DM me on [X/Twitter](https://x.com/bude404) or open a [GitHub Discussion](https://github.com/bude404-ops/Bude-Memory-tech/discussions).
+
+---
+
+**Thank you for keeping Bude Memory alive and independent.** 🧠
