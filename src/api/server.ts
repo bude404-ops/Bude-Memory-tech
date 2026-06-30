@@ -1,4 +1,5 @@
 import http from 'http';
+import { randomUUID } from 'node:crypto';
 import { BudeMemory } from '../sdk/index.js';
 import { Message } from '../core/types.js';
 
@@ -8,7 +9,6 @@ const memory = new BudeMemory();
 const server = http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
 
-  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -32,7 +32,7 @@ const server = http.createServer(async (req, res) => {
     if (path === '/store' && req.method === 'POST') {
       const body = await readBody(req);
       const msg: Message = {
-        id: body.id || crypto.randomUUID(),
+        id: body.id || randomUUID(),
         userId: body.userId,
         sessionId: body.sessionId,
         role: body.role,
@@ -106,7 +106,6 @@ server.listen(PORT, () => {
   console.log(`  GET  /profile?userId  - Get user profile`);
 });
 
-// Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('Shutting down...');
   await memory.close();
