@@ -1,32 +1,36 @@
 # 🧠 Bude Memory
 
-[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-red)](SPONSORS.md)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LISCENSE)
+**Enterprise-grade memory infrastructure for AI agents.**
 
-A drop-in memory layer for AI agents. **Smarter than raw context windows. Lighter than naive RAG.**
+Bude Memory is a production-ready memory layer that reduces AI agent token consumption by ~90% through intelligent conversation compression. Built for teams shipping AI products at scale.
+
+---
 
 ## The Problem
 
-Your agent passes 10k tokens of chat history every turn just to remember the user's name. That's broken.
+AI agents today pass **10,000+ tokens of full chat history every turn** just to maintain context. This is:
 
-## The Fix
+- **Expensive** — API costs scale linearly with conversation length
+- **Slow** — Larger context windows increase latency
+- **Brittle** — Hit context limits, agents break mid-conversation
 
-Bude Memory auto-compresses conversations into structured memory tiers:
+**Your users pay for memory that should be free.**
 
-- **Working** — recent context (last few turns)
-- **Episodic** — key events, decisions, outcomes
-- **Semantic** — persistent facts, preferences, relationships
+---
 
-Retrieval returns the *smallest relevant* set, not the *largest possible*.
+## The Solution
 
-## Quick Start
+Bude Memory auto-compresses conversations into **three intelligent tiers**:
 
-### Prerequisites
+| Tier | What It Stores | Token Cost | Use Case |
+|------|---------------|------------|----------|
+| **Working** | Last 6 messages (raw) | ~400 tokens | Immediate context |
+| **Episodic** | Key events & decisions | ~200 tokens | Long-term recall |
+| **Semantic** | Persistent user profile | ~150 tokens | Identity & preferences |
 
-- Node.js 18+
-- PostgreSQL 14+ (or use Docker below)
+**Result:** Agents remember everything with **~750 tokens instead of 10,000+**.
 
-### Install
+---
 
-```bash
-npm install bude-memory
+## Architecture
+
